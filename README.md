@@ -1,5 +1,5 @@
 ## Descrição
-Este projeto tem como objetivo facilitar o usop do SQLite usando o Powershell.
+Este projeto tem como objetivo facilitar o uso do SQLite no Powershell.
 
 ## Exemplos
 Criar um banco de dados em memoria
