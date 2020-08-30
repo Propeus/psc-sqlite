@@ -1,2 +1,5 @@
 *.dll
+*.db
+.fuse_hidden*
 /src/manifesto-gerador.ps1
+/src/psc-sqlite-test.ps1
