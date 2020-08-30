@@ -20,11 +20,11 @@ function Install() {
     [byte[]]$bytes = $null;
     [string]$Hashb64 = "";
     [System.Security.Cryptography.MD5CryptoServiceProvider]$Hasher = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-    [HashLib]$SQLite_hash = [HashLib](Get-Content -path "HashLib.json" | ConvertFrom-Json);
+    [HashLib]$SQLite_hash = [HashLib](Get-Content -path "Hash.json" | ConvertFrom-Json);
 
     if (-not (Test-Path -Path "$PSScriptRoot/SQLite.Interop.dll")) {
         [DllLib]$SQLite_lib = $null;
-        $SQLite_lib = [DllLib](Get-Content -Path "./LibJson.json" | ConvertFrom-Json);
+        $SQLite_lib = [DllLib](Get-Content -Path "./Lib.json" | ConvertFrom-Json);
                    
         if ($IsLinux) { 
             $bytes = [System.Convert]::FromBase64String($SQLite_lib.SQLite_Interop_Linux)
@@ -61,7 +61,7 @@ function Install() {
     }
 
     if (-not (Test-Path -Path "$PSScriptRoot/System.Data.SQLite.dll")) {
-        $SQLite_lib = Get-Content -Path "$PSScriptRoot/LibJson.json" | ConvertFrom-Json;
+        $SQLite_lib = Get-Content -Path "$PSScriptRoot/Lib.json" | ConvertFrom-Json;
         [byte[]]$bytes = $null;
 
         $bytes = [System.Convert]::FromBase64String($SQLite_lib.System_Data_SQLite_Dll)
