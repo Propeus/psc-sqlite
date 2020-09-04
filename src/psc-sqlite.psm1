@@ -101,7 +101,6 @@ class PscSqlite {
         $this.Connection = New-Object -TypeName System.Data.SQLite.SQLiteConnection;
         $this.Connection.ConnectionString = $this.ConnectionString;
     }
-
     PscSqlite($PathFile) {
         Add-Type -Path "System.Data.SQLite.dll";
 
@@ -115,32 +114,26 @@ class PscSqlite {
         $this.ConnectionString = 'Data Source={0}' -f $this.PathFile;
         $this.Connection = New-Object -TypeName System.Data.SQLite.SQLiteConnection;
         $this.Connection.ConnectionString = $this.ConnectionString;
-    }
-
-    
+    }    
     Open() {
         if (-not $this.IsOpen -and -not $this.ManualOpenClose) {
             $this.Connection.Open();
             $this.IsOpen = $true;
         }
     }
-
     Close() {
         if ($this.IsOpen -and -not $this.ManualOpenClose) {
             $this.Connection.Close();
             $this.IsOpen = $false;
         }
     }
-
     Dispose() {
         $this.Close();
         $this.Connection.Dispose();
     }
-
     [bool]Exists() {
         return Test-Path $this.PathFile
     }
-
     [int]ExecuteNonQuery([string]$Query) {
         $this.Open();
         $command = $this.Connection.CreateCommand();
@@ -149,7 +142,6 @@ class PscSqlite {
         $this.Close();
         return $linhas;
     }
-    
     [PSObject]ExecuteReader([string]$Query) {
         $this.Open();
         $command = $this.Connection.CreateCommand();
@@ -157,7 +149,6 @@ class PscSqlite {
         $reader = $command.ExecuteReader();
         return $reader;
     }
-
     [System.Collections.Generic.List[PSObject]]Execute([string]$Query) {
         $Reader = $this.ExecuteReader($Query);
         [System.Collections.Generic.List[PSObject]]$linhas = [System.Collections.Generic.List[PSObject]]::new($Reader.FieldCount);
@@ -171,7 +162,6 @@ class PscSqlite {
         $this.Close();
         return $linhas;
     }
-
     CreateTableFromType([System.Type]$Type, [bool]$autoIncrement, [bool]$dropTable, [bool]$ignoreIfExists) {
 
         [System.Text.StringBuilder]$Query = [System.Text.StringBuilder]::new();
@@ -198,37 +188,47 @@ class PscSqlite {
 
             if ($properties[$i].PropertyType.Name -eq "Int32") {
                 $Query.Append("INTEGER").Append(" ");
-            }elseif ($properties[$i].PropertyType.Name -eq "String") {
+            }
+            elseif ($properties[$i].PropertyType.Name -eq "String") {
                 $Query.Append("TEXT").Append(" ");
-            }elseif ($properties[$i].PropertyType.Name -eq "Byte") {
-                $Query.Append("NONE").Append(" ");
-            }elseif ($properties[$i].PropertyType.Name -eq "Double" -or $properties[$i].PropertyType.Name -eq "Single") {
-                $Query.Append("REAL").Append(" ");
-            }elseif ($properties[$i].PropertyType.Name -eq "Boolean" -or $properties[$i].PropertyType.Name -eq "DateTime" -or $properties[$i].PropertyType.Name -eq "Decimal") {
-                $Query.Append("NUMERIC").Append(" ");
-            }else{
+            }
+            elseif ($properties[$i].PropertyType.Name -eq "Byte") {
                 $Query.Append("NONE").Append(" ");
             }
+            elseif ($properties[$i].PropertyType.Name -eq "Double" -or $properties[$i].PropertyType.Name -eq "Single") {
+                $Query.Append("REAL").Append(" ");
+            }
+            elseif ($properties[$i].PropertyType.Name -eq "Boolean" -or $properties[$i].PropertyType.Name -eq "DateTime" -or $properties[$i].PropertyType.Name -eq "Decimal") {
+                $Query.Append("NUMERIC").Append(" ");
+            }
+            else {
+                
+                #
+                # Nullable?
+                #
 
-            #
-            # Nullable?
-            #
+                if ($null -ne [System.Nullable]::GetUnderlyingType($properties[$i].PropertyType)) {
+                    $nlType = [System.Nullable]::GetUnderlyingType($properties[$i].PropertyType);
 
-            if ($null -ne [System.Nullable]::GetUnderlyingType($properties[$i].PropertyType)) {
-                $nlType = [System.Nullable]::GetUnderlyingType($properties[$i].PropertyType);
-
-                if ($nlType.Name -eq "Int32") {
-                    $Query.Append("INTEGER").Append(" ");
-                }elseif ($nlType.Name -eq "Byte") {
-                    $Query.Append("NONE").Append(" ");
-                }elseif ($nlType.Name -eq "Double" -or $nlType.Name -eq "Single") {
-                    $Query.Append("REAL").Append(" ");
-                }elseif ($nlType.Name -eq "Boolean" -or $nlType.Name -eq "DateTime" -or $nlType.Name -eq "Decimal") {
-                    $Query.Append("NUMERIC").Append(" ");
-                }else{
-                    $Query.Append("NONE").Append(" ");
+                    if ($nlType.Name -eq "Int32") {
+                        $Query.Append("INTEGER").Append(" ");
+                    }
+                    elseif ($nlType.Name -eq "Byte") {
+                        $Query.Append("NONE").Append(" ");
+                    }
+                    elseif ($nlType.Name -eq "Double" -or $nlType.Name -eq "Single") {
+                        $Query.Append("REAL").Append(" ");
+                    }
+                    elseif ($nlType.Name -eq "Boolean" -or $nlType.Name -eq "DateTime" -or $nlType.Name -eq "Decimal") {
+                        $Query.Append("NUMERIC").Append(" ");
+                    }
+                    else {
+                        $Query.Append("NONE").Append(" ");
+                    }
                 }
             }
+
+
 
             #
             # Attribute?
@@ -260,7 +260,6 @@ class PscSqlite {
 
         $this.ExecuteNonQuery($Query.ToString());
     }
-
     CreateTableFromType([System.Type]$Type) {
         $this.CreateTableFromType($Type, $true, $false, $false)
     }
@@ -270,7 +269,7 @@ class PscSqlite {
     RecreateTableFromType([System.Type]$Type) {
         $this.CreateTableFromType($Type, $true, $true, $false)
     }
-    InsertFromType($value) {
+    InsertFromObject($value) {
         [System.Type]$type = $value.GetType();
         $this.CreateTableIfNotExistsFromType($type);
         [System.Text.StringBuilder]$Query = [System.Text.StringBuilder]::new();
@@ -322,15 +321,20 @@ class PscSqlite {
             if (-not $isID) {
                 if ($properties[$i].PropertyType.Name -eq "Int32" -or $properties[$i].PropertyType.Name -eq "Byte") {
                     $Query.Append($value.$pname);
-                }elseif ($properties[$i].PropertyType.Name -eq "String") {
+                }
+                elseif ($properties[$i].PropertyType.Name -eq "String") {
                     $Query.Append("'").Append($value.$pname).Append("'");
-                }elseif ($properties[$i].PropertyType.Name -eq "Double" -or $properties[$i].PropertyType.Name -eq "Single" -or $properties[$i].PropertyType.Name -eq "Decimal") {
-                    $Query.Append(($value.$pname).ToString().Replace(",","."));
-                }elseif ($properties[$i].PropertyType.Name -eq "Boolean") {
+                }
+                elseif ($properties[$i].PropertyType.Name -eq "Double" -or $properties[$i].PropertyType.Name -eq "Single" -or $properties[$i].PropertyType.Name -eq "Decimal") {
+                    $Query.Append(($value.$pname).ToString().Replace(",", "."));
+                }
+                elseif ($properties[$i].PropertyType.Name -eq "Boolean") {
                     $Query.Append([int]($value.$pname));
-                }elseif ($properties[$i].PropertyType.Name -eq "DateTime" ){
+                }
+                elseif ($properties[$i].PropertyType.Name -eq "DateTime" ) {
                     $Query.Append("'").Append($value.$pname).Append("'");
-                }else{
+                }
+                else {
                     $Query.Append("'").Append($value.$pname).Append("'");
                 }
 
@@ -343,9 +347,169 @@ class PscSqlite {
         
         }
         $Query.Append(");");
-        Write-Host $Query.ToString();
+        #Write-Host $Query.ToString();
         $this.ExecuteNonQuery($Query.ToString());
 
+    }
+    [System.Collections.Generic.List[PSObject]]SelectFromObject($value) {
+        return $this.SelectFromObject($value, $false)
+    }
+    [System.Collections.Generic.List[PSObject]]SelectFromObject($value, [bool]$LikeString) {
+        [System.Type]$type = $value.GetType();
+        $this.CreateTableIfNotExistsFromType($type);
+        [System.Text.StringBuilder]$Query = [System.Text.StringBuilder]::new();
+        $Query.Append("SELECT * FROM ").Append($type.Name).Append(" ");
+        $properties = $type.GetProperties();
+        $flg_next = $false;
+        $flg_where = $true;
+        for ($i = 0; $i -lt $properties.Count; $i++) {
+            
+            $pNme = $properties[$i].Name;
+            $pValue = ($value.$pNme);
+            $isDefault = $false;
+            if ($properties[$i].PropertyType.IsValueType) {
+                $defaultValue = [System.Activator]::CreateInstance($properties[$i].PropertyType)
+                $isDefault = ($pValue -eq $defaultValue);
+            }
+
+            if ($null -ne $pValue -and (-not [string]::IsNullOrEmpty($pValue)) -and (-not $isDefault)) {
+                if ($flg_where) {
+                    $Query.Append("WHERE ");
+                    $flg_where = $false;
+                }
+
+                if ($flg_next) {
+                    $Query.Append(" OR ").Append(" ")
+                    $flg_next = $false;
+                }
+
+                if ($properties[$i].PropertyType.Name -eq "String") {
+                    $Query.Append($pNme)
+                    if ($LikeString) {
+                        $Query.Append(" LIKE ").Append("'%").Append($pValue).Append("%'");
+                    }
+                    else {
+                        $Query.Append("=").Append("'").Append($pValue).Append("'");
+                    }
+                }
+                else {
+                    $Query.Append($pNme).Append("=").Append("'").Append($pValue).Append("'");
+                }
+
+                $flg_next = $true;
+            }
+        }
+        $Query.Append(";");
+        Write-Host $Query.ToString()
+        return $this.Execute($Query.ToString());
+    }
+    UpdateFromObject($value) {
+        [System.Type]$type = $value.GetType();
+        $this.CreateTableIfNotExistsFromType($type);
+        [System.Text.StringBuilder]$Query = [System.Text.StringBuilder]::new();
+        $Query.Append("UPDATE ").Append($type.Name).Append(" SET ");
+        $properties = $type.GetProperties();
+        $flg_next = $false;
+        for ($i = 0; $i -lt $properties.Count; $i++) {
+            #
+            # Attribute?
+            #
+            [bool]$isID = $false;
+            foreach ($item in $properties[$i].GetCustomAttributes($false)) {    
+                $isID = $item.GetType() -eq [System.ComponentModel.DataAnnotations.KeyAttribute] 
+                if ($isID) {
+                    break;
+                }
+            }
+           
+            if (-not $isID) {
+                $pNme = $properties[$i].Name;
+                $pValue = ($value.$pNme);
+                if ($flg_next) {
+                    $Query.Append(",")
+                    $flg_next = $false;
+                }
+                $Query.Append($pNme).Append("=").Append("'").Append($pValue).Append("'");
+
+                $flg_next = $true;
+            }
+
+            
+        }
+
+        $flg_next = $false;
+        $Query.Append(" WHERE ");
+        for ($i = 0; $i -lt $properties.Count; $i++) {
+            #
+            # Attribute?
+            #
+            [bool]$isID = $false;
+            foreach ($item in $properties[$i].GetCustomAttributes($false)) {    
+                $isID = $item.GetType() -eq [System.ComponentModel.DataAnnotations.KeyAttribute] 
+                if ($isID) {
+                    break;
+                }
+            }
+           
+            if ($isID) {
+                $pNme = $properties[$i].Name;
+                $pValue = ($value.$pNme);
+                if ($flg_next) {
+                    $Query.Append(" AND ")
+                    $flg_next = $false;
+                }
+                $Query.Append($pNme).Append("=").Append("'").Append($pValue).Append("'");
+
+                $flg_next = $true;
+            }
+
+            
+        }
+        $Query.Append(";");
+        # Write-Host $Query.ToString();
+        $this.ExecuteNonQuery($Query.ToString());
+    }
+    DeleteFromObject($value) {
+        [System.Type]$type = $value.GetType();
+        $this.CreateTableIfNotExistsFromType($type);
+        [System.Text.StringBuilder]$Query = [System.Text.StringBuilder]::new();
+        $Query.Append("DELETE FROM ").Append($type.Name);
+        $properties = $type.GetProperties();
+
+        $flg_next = $false;
+        $Query.Append(" WHERE ");
+        for ($i = 0; $i -lt $properties.Count; $i++) {
+            #
+            # Attribute?
+            #
+            [bool]$isID = $false;
+            foreach ($item in $properties[$i].GetCustomAttributes($false)) {    
+                $isID = $item.GetType() -eq [System.ComponentModel.DataAnnotations.KeyAttribute] 
+                if ($isID) {
+                    break;
+                }
+            }
+           
+            if ($isID) {
+                $pNme = $properties[$i].Name;
+                $pValue = ($value.$pNme);
+                if ($flg_next) {
+                    $Query.Append(" AND ")
+                    $flg_next = $false;
+                }
+                $Query.Append($pNme).Append("=").Append("'").Append($pValue).Append("'");
+
+                $flg_next = $true;
+            }
+
+            
+        }
+        $Query.Append(";");
+        # Write-Host $Query.ToString();
+        $this.ExecuteNonQuery($Query.ToString());
+    }
+    [bool]ExistsFromObject($value) {
+        return $this.SelectFromObject($value).Count -ne 0;
     }
 }
 
@@ -370,25 +534,25 @@ function ConvertTo-PscSqliteType {
     param (
         # Lista a ser convertido
         [System.Collections.IEnumerable]
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         $collection,
         # Tipo a ser convertido
-        [Parameter(Mandatory=$true,Position=1)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [System.Type]
         $type
     )
 
-    begin{
-        [System.Collections.IEnumerable]$newCollection = [System.Collections.ArrayList]::new();
+    begin {
+        [System.Collections.ArrayList]$newCollection = [System.Collections.ArrayList]::new();
     }
     
-    process{
+    process {
         foreach ($item in $collection) {
-          $newCollection.Add([System.Management.Automation.LanguagePrimitives]::ConvertTo($item, $type));
+            $newCollection.Add([System.Management.Automation.LanguagePrimitives]::ConvertTo($item, $type))>$null;
         }
     }
 
-    end{
+    end {
         return $newCollection;
     }
 }
